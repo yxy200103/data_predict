@@ -1,3 +1,4 @@
+from os import stat
 import pandas as pd
 import random
 class DATA():
@@ -20,47 +21,60 @@ class State():
         self.action = action
         self.getin = getin
         self.out = out
-    def change_status(self,data:DATA):
-        act = self.action
-        reward = 0
-        if (act == 1): # 卖出
-            if self.status != 0:
-                reward = (data.open - self.getin) / self.getin
-            self.out = data.open
-            self.status = -1 # 变为空仓 等待买入信号
-        elif (act == -1): # 买入
-            if self.status != 0:
-                reward = (self.out - data.open) / self.out
-            self.getin = data.open
-            self.status = 1 # 变为空仓 等待卖出信号
 
-        return reward
+def change_status(state, state_stack,data:DATA,act_sum):
+    reward = 0
+    action = state.action
+    if (action == 1): # 卖出
+        status = state.status
+        state.out = data.open
+        state.status = -1 # 变为空仓 等待买入信号
+        if action * act_sum < 0 and status != 0:
+            old_state = state_stack.pop()
+            reward = (data.open - old_state.getin) / old_state.getin
+        elif action * act_sum >= 0:
+            state_stack.append(state)
+    elif (action == -1): # 买入
+        status = state.status
+        state.getin = data.open
+        state.status = 1 # 变为空仓 等待卖出信号
+        if action * act_sum < 0 and status != 0:
+            old_state = state_stack.pop()
+            reward = (old_state.out - data.open) / old_state.out
+        elif action * act_sum >= 0 :
+            state_stack.append(state)
+    return reward
 
 def main():
     data = pd.read_csv('20_test.csv')# close	open	high	low
     x_columns = [x for x in data.columns] #get the name list of titles 
     data = data[x_columns].values
     [rows, cols] = data.shape
-    state_list = []
+    state_stack = []
     state = State(0,0,0,0)
-    state_list.append(state)
+    # state_stack.append(state)
     sum = 0
     sum_reward = 0
     for i in range (rows - 1):
-        if sum == -1:
-            action =  random.randint(0, 1) 
-        elif sum == 1:
-            action = random.randint(-1,0)
-        else:
-            action = random.randint(-1,1)
-        sum += action
-        state.action = action
-        print("action is ",action, "tomorrow data is",data[i+1])
+        action = random.randint(-1,1)
         data_T = DATA(data[i+1,0],data[i+1,1],data[i+1,2],data[i+1,3])
-        reward = state.change_status(data_T)
+        print("action is ",action,"sum_act ",sum, "tomorrow data is",data[i+1])
+        state.action = action
+        reward = change_status(state,state_stack,data_T,sum)
         sum_reward += reward
-        print("Time ",i, "reward ",reward)
-
+        sum += action
+        print("Time ",i, "reward ",reward, "sum_reward ",sum_reward)
+    num = abs(sum)
+    for i in range(num):
+        data_T = DATA(data[rows - 1,0],data[rows - 1,1],data[rows -1 ,2],data[rows- 1,3])
+        if sum < 0 :
+            old_state = state_stack.pop()
+            reward = (data_T.open - old_state.getin) / old_state.getin
+        else:
+            old_state = state_stack.pop()
+            reward = (old_state.out - data_T.open) / old_state.out
+        sum_reward += reward
+        print("reward ",reward)
     print(sum_reward)
 
 if __name__ == '__main__':
