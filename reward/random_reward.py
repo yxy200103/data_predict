@@ -1,4 +1,4 @@
-from os import stat
+import copy
 import pandas as pd
 import random
 class DATA():
@@ -33,7 +33,7 @@ def change_status(state, state_stack,data:DATA,act_sum):
             old_state = state_stack.pop()
             reward = (data.open - old_state.getin) / old_state.getin
         elif action * act_sum >= 0:
-            state_stack.append(state)
+            state_stack.append(copy.copy(state))
     elif (action == -1): # 买入
         status = state.status
         state.getin = data.open
@@ -42,7 +42,7 @@ def change_status(state, state_stack,data:DATA,act_sum):
             old_state = state_stack.pop()
             reward = (old_state.out - data.open) / old_state.out
         elif action * act_sum >= 0 :
-            state_stack.append(state)
+            state_stack.append(copy.copy(state))
     return reward
 
 def main():
@@ -67,15 +67,18 @@ def main():
     num = abs(sum)
     for i in range(num):
         data_T = DATA(data[rows - 1,0],data[rows - 1,1],data[rows -1 ,2],data[rows- 1,3])
+        # print(len(state_stack),data_T.open)
         if sum < 0 :
             old_state = state_stack.pop()
+            # print(old_state.getin)
             reward = (data_T.open - old_state.getin) / old_state.getin
         else:
             old_state = state_stack.pop()
+            # print(old_state.out)
             reward = (old_state.out - data_T.open) / old_state.out
         sum_reward += reward
         print("reward ",reward)
-    print(sum_reward)
+    print("total ",sum_reward)
 
 if __name__ == '__main__':
     main()
