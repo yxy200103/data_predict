@@ -30,20 +30,34 @@ def change_status(state, state_stack,data:DATA,act_sum):
         state.out = data.open
         state.status = -1 # 变为空仓 等待买入信号
         if action * act_sum < 0 and status != 0:
-            old_state = state_stack.pop()
-            reward = (data.open - old_state.getin) / old_state.getin
+            for i in range(0-act_sum):
+                old_state = state_stack.pop()
+                rew= (data.open - old_state.getin) / old_state.getin
+                reward += rew
+                print("sub reward",rew)
+            state_stack.append(copy.copy(state))
+            act_sum = action
         elif action * act_sum >= 0:
             state_stack.append(copy.copy(state))
+            act_sum += action
+
     elif (action == -1): # 买入
         status = state.status
         state.getin = data.open
         state.status = 1 # 变为空仓 等待卖出信号
         if action * act_sum < 0 and status != 0:
-            old_state = state_stack.pop()
-            reward = (old_state.out - data.open) / old_state.out
+            for i in range(act_sum):
+                old_state = state_stack.pop()
+                rew = (old_state.out - data.open) / old_state.out
+                reward += rew
+                print("sub reward",rew)
+            state_stack.append(copy.copy(state))
+            act_sum = action
         elif action * act_sum >= 0 :
             state_stack.append(copy.copy(state))
-    return reward
+            act_sum += action
+
+    return reward,act_sum
 
 def main():
     data = pd.read_csv('20_test.csv')# close	open	high	low
@@ -58,12 +72,12 @@ def main():
     for i in range (rows - 1):
         action = random.randint(-1,1)
         data_T = DATA(data[i+1,0],data[i+1,1],data[i+1,2],data[i+1,3])
-        print("action is ",action,"sum_act ",sum, "tomorrow data is",data[i+1])
+        print("Time ",i ,"-------------------")
         state.action = action
-        reward = change_status(state,state_stack,data_T,sum)
+        reward,sum = change_status(state,state_stack,data_T,sum)
         sum_reward += reward
-        sum += action
-        print("Time ",i, "reward ",reward, "sum_reward ",sum_reward)
+        print("action is ",action,"sum_act ",sum, "tomorrow data is",data[i+1])
+        print("reward ",reward, "sum_reward ",sum_reward,"\n==================")
     num = abs(sum)
     for i in range(num):
         data_T = DATA(data[rows - 1,0],data[rows - 1,1],data[rows -1 ,2],data[rows- 1,3])
